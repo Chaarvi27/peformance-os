@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridian — Dashboard</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- External assets (linked to assets/ for production wiring) -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+
+  <style>
+    /* ── Design Tokens ─────────────────────────────────── */
+    :root {
+      --bg:           #0d0f14;
+      --bg-panel:     #13161e;
+      --bg-card:      #181c27;
+      --bg-hover:     #1e2333;
+      --border:       rgba(255,255,255,.07);
+      --border-focus: rgba(255,255,255,.18);
+
+      --text-primary:   #e8eaf0;
+      --text-secondary: #7e8599;
+      --text-muted:     #464d63;
+
+      --accent:         #4f7cff;
+      --accent-glow:    rgba(79,124,255,.25);
+      --accent-subtle:  rgba(79,124,255,.12);
+
+      --green:  #34d399;
+      --red:    #f87171;
+      --amber:  #fbbf24;
+
+      --sidebar-w: 230px;
+      --topbar-h:  64px;
+      --radius:    10px;
+      --radius-lg: 16px;
+
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+
+      --ease-out-expo: cubic-bezier(.19,1,.22,1);
+    }
+
+    /* ── Reset & Base ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 15px; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.55;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout Shell ──────────────────────────────────── */
+    #app {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: var(--topbar-h) 1fr;
+      grid-template-areas:
+        "sidebar topbar"
+        "sidebar main";
+      min-height: 100vh;
+      transition: grid-template-columns .35s var(--ease-out-expo);
+    }
+
+    #app.sidebar-collapsed {
+      --sidebar-w: 64px;
+    }
+
+    /* ── Sidebar ───────────────────────────────────────── */
+    #sidebar {
+      grid-area: sidebar;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 100;
+      transition: width .35s var(--ease-out-expo);
+    }
+
+    /* Logo area */
+    .sidebar-logo {
+      height: var(--topbar-h);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent) 0%, #7b5fff 100%);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    .logo-mark svg { width: 16px; height: 16px; }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      opacity: 1;
+      transition: opacity .2s, width .35s var(--ease-out-expo);
+    }
+
+    #app.sidebar-collapsed .logo-text { opacity: 0; width: 0; pointer-events: none; }
+
+    /* Nav */
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .nav-label {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 8px 4px;
+      white-space: nowrap;
+      transition: opacity .2s;
+    }
+
+    #app.sidebar-collapsed .nav-label { opacity: 0; pointer-events: none; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: .88rem;
+      font-weight: 500;
+      transition: background .15s, color .15s;
+      position: relative;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      transition: color .15s;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .nav-item.active svg { color: var(--accent); }
+
+    .nav-item .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      font-size: .65rem;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+      font-family: var(--font-mono);
+      transition: opacity .2s;
+    }
+
+    #app.sidebar-collapsed .nav-badge,
+    #app.sidebar-collapsed .nav-item-label { opacity: 0; width: 0; overflow: hidden; }
+
+    .nav-item-label { transition: opacity .2s, width .35s var(--ease-out-expo); }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 14px 10px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .user-row:hover { background: var(--bg-hover); }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f87171, #fbbf24);
+      display: grid;
+      place-items: center;
+      font-size: .75rem;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-info { overflow: hidden; transition: opacity .2s, width .35s; }
+    .user-info strong { display: block; font-size: .82rem; font-weight: 600; white-space: nowrap; }
+    .user-info span { font-size: .72rem; color: var(--text-secondary); white-space: nowrap; }
+    #app.sidebar-collapsed .user-info { opacity: 0; width: 0; pointer-events: none; }
+
+    /* ── Top Bar ───────────────────────────────────────── */
+    #topbar {
+      grid-area: topbar;
+      height: var(--topbar-h);
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 28px 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    /* Collapse toggle */
+    #sidebar-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background .15s, color .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+
+    #sidebar-toggle:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-focus); }
+
+    /* Breadcrumb */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .82rem;
+      color: var(--text-muted);
+    }
+
+    .breadcrumb strong { color: var(--text-primary); font-weight: 600; }
+    .breadcrumb span { opacity: .5; }
+
+    /* Search bar */
+    .topbar-search {
+      flex: 1;
+      max-width: 340px;
+      margin-left: auto;
+    }
+
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-input-wrap svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 15px;
+      height: 15px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px 7px 34px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: .82rem;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    #search-input::placeholder { color: var(--text-muted); }
+
+    #search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* Topbar actions */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      position: relative;
+      transition: background .15s, color .15s;
+    }
+
+    .icon-btn svg { width: 16px; height: 16px; }
+    .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+    .icon-btn .dot {
+      position: absolute;
+      top: 6px; right: 6px;
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      border: 1.5px solid var(--bg-panel);
+    }
+
+    .cta-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .12s, box-shadow .15s;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .cta-btn:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+    .cta-btn:active { transform: translateY(0); }
+    .cta-btn svg { width: 14px; height: 14px; }
+
+    /* ── Main Content ──────────────────────────────────── */
+    #main {
+      grid-area: main;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      min-width: 0;
+    }
+
+    /* Page header */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      line-height: 1.15;
+      letter-spacing: -.01em;
+    }
+
+    .page-subtitle {
+      font-size: .84rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .date-badge {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    /* ── KPI Header ────────────────────────────────────── */
+    #kpi-section {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+      cursor: default;
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity .2s;
+      background: radial-gradient(ellipse at top left, var(--accent-glow), transparent 60%);
+    }
+
+    .kpi-card:hover { border-color: var(--border-focus); transform: translateY(-2px); }
+    .kpi-card:hover::after { opacity: 1; }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .kpi-label {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .kpi-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-subtle);
+    }
+
+    .kpi-icon svg { width: 16px; height: 16px; color: var(--accent); }
+
+    .kpi-value {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      line-height: 1;
+      letter-spacing: -.02em;
+      margin-bottom: 8px;
+    }
+
+    .kpi-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .75rem;
+    }
+
+    .delta {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .delta.up { color: var(--green); }
+    .delta.down { color: var(--red); }
+    .delta svg { width: 12px; height: 12px; }
+
+    .kpi-compare { color: var(--text-muted); }
+
+    /* Sparkline placeholder */
+    .sparkline {
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 90px;
+      height: 40px;
+      opacity: .25;
+    }
+
+    /* ── Content Grid ──────────────────────────────────── */
+    #content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ── Panel ─────────────────────────────────────────── */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: .9rem;
+    }
+
+    .panel-subtitle {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chip {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: .74rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      font-family: var(--font-body);
+    }
+
+    .chip:hover, .chip.active { background: var(--accent-subtle); color: var(--accent); border-color: transparent; }
+
+    .panel-body { padding: 22px; }
+
+    /* Chart placeholder */
+    .chart-placeholder {
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: .8rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-placeholder svg { width: 28px; height: 28px; opacity: .4; }
+
+    /* Fake chart bars for visual warmth */
+    .fake-bars {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding: 0 22px 18px;
+      pointer-events: none;
+    }
+
+    .fake-bar {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      background: var(--accent);
+      opacity: .08;
+      transition: opacity .2s;
+    }
+
+    .chart-placeholder:hover .fake-bar { opacity: .14; }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .data-table tr { transition: background .12s; }
+    .data-table tbody tr:hover { background: var(--bg-hover); }
+
+    .data-table td.primary { color: var(--text-primary); font-weight: 500; }
+
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-dot.live::before   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.paused::before { background: var(--amber); }
+    .status-dot.draft::before  { background: var(--text-muted); }
+
+    .progress-bar-wrap {
+      background: var(--bg);
+      border-radius: 4px;
+      height: 5px;
+      width: 80px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--accent);
+      transition: width .6s var(--ease-out-expo);
+    }
+
+    /* ── Side Panel ────────────────────────────────────── */
+    .side-stack { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Activity feed */
+    .activity-list { display: flex; flex-direction: column; }
+
+    .activity-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .82rem;
+    }
+
+    .activity-item:last-child { border-bottom: none; }
+
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .activity-item p { color: var(--text-secondary); line-height: 1.45; }
+    .activity-item p strong { color: var(--text-primary); font-weight: 500; }
+    .activity-time { font-size: .71rem; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
+
+    /* Mini stat list */
+    .mini-stats { display: flex; flex-direction: column; gap: 14px; }
+
+    .mini-stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .83rem;
+    }
+
+    .mini-stat-label { color: var(--text-secondary); }
+    .mini-stat-value { font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+
+    .mini-progress {
+      background: var(--bg);
+      border-radius: 4px;
+      height: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .mini-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), #7b5fff);
+    }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      #content-grid { grid-template-columns: 1fr; }
+      .side-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    }
+
+    @media (max-width: 900px) {
+      #kpi-section { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 700px) {
+      :root { --sidebar-w: 0px; --topbar-h: 56px; }
+      #app { grid-template-columns: 0 1fr; }
+      #sidebar { width: var(--sidebar-w); position: fixed; left: 0; top: 0; bottom: 0; }
+      #app.mobile-open { --sidebar-w: 220px; }
+      #app.mobile-open #sidebar-overlay { display: block; }
+
+      #sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.6);
+        z-index: 99;
+      }
+
+      #main { padding: 18px; }
+      .cta-btn .btn-label { display: none; }
+      .topbar-search { display: none; }
+      #kpi-section { grid-template-columns: 1fr 1fr; }
+      .side-stack { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 440px) {
+      #kpi-section { grid-template-columns: 1fr; }
+    }
+
+    /* ── Entrance Animations ───────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .kpi-card       { animation: fadeUp .5s var(--ease-out-expo) both; }
+    .kpi-card:nth-child(1) { animation-delay: .05s; }
+    .kpi-card:nth-child(2) { animation-delay: .10s; }
+    .kpi-card:nth-child(3) { animation-delay: .15s; }
+    .kpi-card:nth-child(4) { animation-delay: .20s; }
+
+    #content-grid   { animation: fadeUp .5s var(--ease-out-expo) .25s both; }
+
+    /* ── Scrollbar ─────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+  </style>
+</head>
+<body>
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- ═══════════════ APP SHELL ════════════════ -->
+<div id="app">
+
+  <!-- ── Sidebar ─────────────────────── -->
+  <aside id="sidebar" role="navigation" aria-label="Main navigation">
+
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="logo-text">Meridian</span>
+    </div>
+
+    <nav class="sidebar-nav" id="nav-main">
+
+      <span class="nav-label">Overview</span>
+
+      <!-- Dashboard -->
+      <a class="nav-item active" href="#" data-view="dashboard" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+        <span class="nav-item-label">Dashboard</span>
+      </a>
+
+      <!-- Campaigns -->
+      <a class="nav-item" href="#" data-view="campaigns">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        <span class="nav-item-label">Campaigns</span>
+        <span class="nav-badge">4</span>
+      </a>
+
+      <!-- Insights -->
+      <a class="nav-item" href="#" data-view="insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 8v4l3 3"/>
+        </svg>
+        <span class="nav-item-label">Insights</span>
+      </a>
+
+      <span class="nav-label">Manage</span>
+
+      <a class="nav-item" href="#" data-view="audiences">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="nav-item-label">Audiences</span>
+      </a>
+
+      <a class="nav-item" href="#" data-view="creatives">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <span class="nav-item-label">Creatives</span>
+      </a>
+
+      <a class="nav-item" href="#" data-view="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span class="nav-item-label">Reports</span>
+      </a>
+
+      <span class="nav-label">System</span>
+
+      <a class="nav-item" href="#" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-item-label">Settings</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row" id="user-menu-trigger" role="button" tabindex="0" aria-label="User menu">
+        <div class="avatar" aria-hidden="true">JR</div>
+        <div class="user-info">
+          <strong>Jordan R.</strong>
+          <span>Growth Lead</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Top Bar ──────────────────────── -->
+  <header id="topbar" role="banner">
+
+    <button id="sidebar-toggle" aria-label="Toggle sidebar" onclick="toggleSidebar()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <div class="breadcrumb" aria-label="Breadcrumb">
+      <span>Meridian</span>
+      <span>/</span>
+      <strong id="breadcrumb-current">Dashboard</strong>
+    </div>
+
+    <div class="topbar-search" role="search">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="search-input" type="search" placeholder="Search campaigns, metrics…" autocomplete="off" aria-label="Global search" />
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+
+      <!-- Notifications -->
+      <button class="icon-btn" id="notifications-btn" aria-label="Notifications (3 unread)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="dot" aria-hidden="true"></span>
+      </button>
+
+      <!-- Help -->
+      <button class="icon-btn" id="help-btn" aria-label="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+
+      <!-- New Campaign CTA -->
+      <button class="cta-btn" id="new-campaign-btn" aria-label="Create new campaign">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span class="btn-label">New Campaign</span>
+      </button>
+
+    </div>
+  </header>
+
+  <!-- ── Main Content ─────────────────── -->
+  <main id="main" role="main" data-view="dashboard">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="page-title">Good morning, Jordan.</h1>
+        <p class="page-subtitle" id="page-subtitle">Here's what's happening across your active campaigns.</p>
+      </div>
+      <span class="date-badge" id="date-badge">—</span>
+    </div>
+
+    <!-- KPI Cards -->
+    <section id="kpi-section" aria-label="Key performance indicators">
+
+      <!-- KPI 1: Revenue -->
+      <div class="kpi-card" id="kpi-revenue" data-kpi="revenue" role="region" aria-label="Revenue">
+        <div class="kpi-top">
+          <span class="kpi-label">Revenue</span>
+          <div class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-revenue-value">$148,230</div>
+        <div class="kpi-footer">
+          <span class="delta up" aria-label="Up 12.4 percent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+            +12.4%
+          </span>
+          <span class="kpi-compare">vs last month</span>
+        </div>
+        <svg class="sparkline" id="sparkline-revenue" viewBox="0 0 90 40" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,38 15,30 30,32 45,20 55,22 70,10 90,5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <!-- KPI 2: Impressions -->
+      <div class="kpi-card" id="kpi-impressions" data-kpi="impressions" role="region" aria-label="Impressions">
+        <div class="kpi-top">
+          <span class="kpi-label">Impressions</span>
+          <div class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-impressions-value">4.82M</div>
+        <div class="kpi-footer">
+          <span class="delta up" aria-label="Up 8.1 percent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+            +8.1%
+          </span>
+          <span class="kpi-compare">vs last month</span>
+        </div>
+        <svg class="sparkline" viewBox="0 0 90 40" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,35 20,28 35,30 50,18 65,14 90,8" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <!-- KPI 3: Conversion Rate -->
+      <div class="kpi-card" id="kpi-cvr" data-kpi="cvr" role="region" aria-label="Conversion Rate">
+        <div class="kpi-top">
+          <span class="kpi-label">Conv. Rate</span>
+          <div class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-cvr-value">3.41%</div>
+        <div class="kpi-footer">
+          <span class="delta down" aria-label="Down 0.3 percent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            −0.3%
+          </span>
+          <span class="kpi-compare">vs last month</span>
+        </div>
+        <svg class="sparkline" viewBox="0 0 90 40" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,15 20,12 40,10 55,16 70,20 90,25" fill="none" stroke="var(--red)" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <!-- KPI 4: Active Campaigns -->
+      <div class="kpi-card" id="kpi-campaigns" data-kpi="campaigns" role="region" aria-label="Active Campaigns">
+        <div class="kpi-top">
+          <span class="kpi-label">Active</span>
+          <div class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpi-campaigns-value">12</div>
+        <div class="kpi-footer">
+          <span class="delta up" aria-label="Up 3 campaigns">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+            +3
+          </span>
+          <span class="kpi-compare">this month</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Content Grid: main panel + sidebar panels -->
+    <div id="content-grid">
+
+      <!-- ── Left: Main Panel ── -->
+      <div id="main-panel">
+
+        <!-- Performance Chart -->
+        <div class="panel" id="performance-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Performance Overview</div>
+              <div class="panel-subtitle">Revenue & impressions over time</div>
+            </div>
+            <div class="panel-actions" role="group" aria-label="Date range filter">
+              <button class="chip active" data-range="7d">7D</button>
+              <button class="chip" data-range="30d">30D</button>
+              <button class="chip" data-range="90d">90D</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- JS chart mount point -->
+            <div class="chart-placeholder" id="chart-performance" aria-label="Performance chart loading area" role="img">
+              <div class="fake-bars" aria-hidden="true">
+                <div class="fake-bar" style="height:40%"></div>
+                <div class="fake-bar" style="height:65%"></div>
+                <div class="fake-bar" style="height:50%"></div>
+                <div class="fake-bar" style="height:80%"></div>
+                <div class="fake-bar" style="height:60%"></div>
+                <div class="fake-bar" style="height:90%"></div>
+                <div class="fake-bar" style="height:75%"></div>
+                <div class="fake-bar" style="height:85%"></div>
+                <div class="fake-bar" style="height:70%"></div>
+                <div class="fake-bar" style="height:95%"></div>
+                <div class="fake-bar" style="height:78%"></div>
+                <div class="fake-bar" style="height:88%"></div>
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              <span>Chart renders here — mount via <code style="font-family:var(--font-mono);font-size:.78rem;color:var(--accent)">#chart-performance</code></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campaigns Table -->
+        <div class="panel" id="campaigns-panel" style="margin-top:20px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Active Campaigns</div>
+              <div class="panel-subtitle">Real-time status across channels</div>
+            </div>
+            <div class="panel-actions">
+              <button class="chip" id="filter-campaigns-btn">Filter</button>
+              <button class="chip" id="export-campaigns-btn">Export</button>
+            </div>
+          </div>
+          <div class="panel-body" style="padding:0;">
+            <table class="data-table" id="campaigns-table" aria-label="Active campaigns list">
+              <thead>
+                <tr>
+                  <th scope="col">Campaign</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Budget</th>
+                  <th scope="col">Spend</th>
+                  <th scope="col">CVR</th>
+                  <th scope="col">Progress</th>
+                </tr>
+              </thead>
+              <tbody id="campaigns-tbody">
+                <tr>
+                  <td class="primary">Spring Brand Push</td>
+                  <td><span class="status-dot live">Live</span></td>
+                  <td>$24,000</td>
+                  <td>$18,420</td>
+                  <td>4.2%</td>
+                  <td>
+                    <div class="progress-bar-wrap" role="progressbar" aria-valuenow="77" aria-valuemin="0" aria-valuemax="100" aria-label="77% spent">
+                      <div class="progress-bar-fill" style="width:77%"></div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="primary">Retargeting Q2</td>
+                  <td><span class="status-dot live">Live</span></td>
+                  <td>$12,500</td>
+                  <td>$6,100</td>
+                  <td>5.8%</td>
+                  <td>
+                    <div class="progress-bar-wrap" role="progressbar" aria-valuenow="49" aria-valuemin="0" aria-valuemax="100" aria-label="49% spent">
+                      <div class="progress-bar-fill" style="width:49%"></div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="primary">Influencer Wave 3</td>
+                  <td><span class="status-dot paused">Paused</span></td>
+                  <td>$8,000</td>
+                  <td>$7,950</td>
+                  <td>2.1%</td>
+                  <td>
+                    <div class="progress-bar-wrap" role="progressbar" aria-valuenow="99" aria-valuemin="0" aria-valuemax="100" aria-label="99% spent">
+                      <div class="progress-bar-fill" style="width:99%"></div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="primary">Summer Teaser</td>
+                  <td><span class="status-dot draft">Draft</span></td>
+                  <td>$15,000</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>
+                    <div class="progress-bar-wrap" aria-hidden="true"><div class="progress-bar-fill" style="width:0%"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Right: Side Panels ── -->
+      <div class="side-stack" id="side-panels">
+
+        <!-- Activity Feed -->
+        <div class="panel" id="activity-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Activity</div>
+              <div class="panel-subtitle">Recent events</div>
+            </div>
+          </div>
+          <div class="panel-body" style="padding: 0 22px;">
+            <div class="activity-list" id="activity-feed" role="feed" aria-label="Recent activity">
+
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--green)" aria-hidden="true"></div>
+                <div>
+                  <p><strong>Spring Brand Push</strong> reached 1M impressions</p>
+                  <div class="activity-time">2 min ago</div>
+                </div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--accent)" aria-hidden="true"></div>
+                <div>
+                  <p>Budget increased for <strong>Retargeting Q2</strong></p>
+                  <div class="activity-time">41 min ago</div>
+                </div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--amber)" aria-hidden="true"></div>
+                <div>
+                  <p><strong>Influencer Wave 3</strong> was paused automatically</p>
+                  <div class="activity-time">3 hr ago</div>
+                </div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--text-muted)" aria-hidden="true"></div>
+                <div>
+                  <p><strong>Summer Teaser</strong> draft created by Jordan R.</p>
+                  <div class="activity-time">Yesterday</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Channel Breakdown -->
+        <div class="panel" id="channel-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Channels</div>
+              <div class="panel-subtitle">Budget allocation</div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- JS pie/donut mount -->
+            <div id="chart-channels" aria-label="Channel chart mount point" style="height:140px;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:.78rem;color:var(--text-muted);text-align:center">Mount donut chart via <br><code style="font-family:var(--font-mono);color:var(--accent)">#chart-channels</code></span>
+            </div>
+            <div class="mini-stats" style="margin-top:18px;" id="channel-stats">
+              <div class="mini-stat">
+                <span class="mini-stat-label">Paid Search</span>
+                <span class="mini-stat-value">38%</span>
+              </div>
+              <div class="mini-progress"><div class="mini-progress-fill" style="width:38%"></div></div>
+
+              <div class="mini-stat">
+                <span class="mini-stat-label">Paid Social</span>
+                <span class="mini-stat-value">29%</span>
+              </div>
+              <div class="mini-progress"><div class="mini-progress-fill" style="width:29%"></div></div>
+
+              <div class="mini-stat">
+                <span class="mini-stat-label">Display</span>
+                <span class="mini-stat-value">21%</span>
+              </div>
+              <div class="mini-progress"><div class="mini-progress-fill" style="width:21%"></div></div>
+
+              <div class="mini-stat">
+                <span class="mini-stat-label">Email</span>
+                <span class="mini-stat-value">12%</span>
+              </div>
+              <div class="mini-progress"><div class="mini-progress-fill" style="width:12%"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+<!-- /#app -->
+
+<!-- External JS (linked to assets/ for production wiring) -->
+<script src="assets/js/vendor/chart.min.js"></script>
+<script src="assets/js/vendor/d3.min.js"></script>
+<script src="assets/js/components/charts.js"></script>
+<script src="assets/js/components/campaigns.js"></script>
+<script src="assets/js/app.js"></script>
+
+<script>
+/* ── Inline Bootstrap JS ──────────────────────────────────
+   Provides core DOM wiring that runs immediately.
+   Heavy logic lives in assets/js/app.js.
+──────────────────────────────────────────────────────── */
+
+// ── Date badge ────────────────────────────────────────
+(function setDate() {
+  const el = document.getElementById('date-badge');
+  if (!el) return;
+  const d = new Date();
+  el.textContent = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+})();
+
+// ── Sidebar collapse (desktop) ────────────────────────
+function toggleSidebar() {
+  const app = document.getElementById('app');
+  if (window.innerWidth <= 700) {
+    // Mobile: slide in/out
+    app.classList.toggle('mobile-open');
+  } else {
+    app.classList.toggle('sidebar-collapsed');
+    try { localStorage.setItem('sidebar-collapsed', app.classList.contains('sidebar-collapsed')); } catch(e) {}
+  }
+}
+
+// Restore saved state
+(function restoreSidebar() {
+  try {
+    if (localStorage.getItem('sidebar-collapsed') === 'true') {
+      document.getElementById('app').classList.add('sidebar-collapsed');
+    }
+  } catch(e) {}
+})();
+
+// Mobile overlay close
+function closeMobileSidebar() {
+  document.getElementById('app').classList.remove('mobile-open');
+}
+
+// ── Nav routing hook ──────────────────────────────────
+document.getElementById('nav-main').addEventListener('click', function(e) {
+  const item = e.target.closest('.nav-item');
+  if (!item) return;
+  e.preventDefault();
+
+  // Active state
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  item.classList.add('active');
+
+  const view = item.dataset.view || 'dashboard';
+  document.getElementById('main').dataset.view = view;
+
+  // Update breadcrumb
+  const label = item.querySelector('.nav-item-label');
+  if (label) document.getElementById('breadcrumb-current').textContent = label.textContent.trim();
+
+  // Close mobile sidebar
+  if (window.innerWidth <= 700) closeMobileSidebar();
+
+  // Dispatch custom event for app.js to handle routing
+  document.dispatchEvent(new CustomEvent('meridian:navigate', { detail: { view } }));
+});
+
+// ── Range chip toggle ─────────────────────────────────
+document.querySelectorAll('[data-range]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const group = this.closest('[role="group"]') || this.parentElement;
+    group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+    document.dispatchEvent(new CustomEvent('meridian:range-change', { detail: { range: this.dataset.range } }));
+  });
+});
+
+// ── KPI card click hook ───────────────────────────────
+document.querySelectorAll('.kpi-card').forEach(card => {
+  card.addEventListener('click', function() {
+    document.dispatchEvent(new CustomEvent('meridian:kpi-click', { detail: { kpi: this.dataset.kpi } }));
+  });
+});
+
+// ── New Campaign button ───────────────────────────────
+document.getElementById('new-campaign-btn').addEventListener('click', function() {
+  document.dispatchEvent(new CustomEvent('meridian:new-campaign'));
+});
+
+// ── Search debounce hook ──────────────────────────────
+let searchTimer;
+document.getElementById('search-input').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    document.dispatchEvent(new CustomEvent('meridian:search', { detail: { query: this.value } }));
+  }, 280);
+});
+
+// ── Notification button ───────────────────────────────
+document.getElementById('notifications-btn').addEventListener('click', function() {
+  document.dispatchEvent(new CustomEvent('meridian:notifications-open'));
+});
+
+// ── Expose global namespace for app.js ────────────────
+window.Meridian = {
+  version: '1.0.0',
+  // DOM refs
+  dom: {
+    app:             document.getElementById('app'),
+    sidebar:         document.getElementById('sidebar'),
+    main:            document.getElementById('main'),
+    chartPerformance: document.getElementById('chart-performance'),
+    chartChannels:   document.getElementById('chart-channels'),
+    campaignsTbody:  document.getElementById('campaigns-tbody'),
+    activityFeed:    document.getElementById('activity-feed'),
+    kpiRevenue:      document.getElementById('kpi-revenue-value'),
+    kpiImpressions:  document.getElementById('kpi-impressions-value'),
+    kpiCvr:          document.getElementById('kpi-cvr-value'),
+    kpiCampaigns:    document.getElementById('kpi-campaigns-value'),
+  },
+  // State
+  state: {
+    view:  'dashboard',
+    range: '7d',
+  },
+  // Utility: update a KPI card value
+  setKpi(key, value) {
+    const el = document.getElementById('kpi-' + key + '-value');
+    if (el) el.textContent = value;
+  },
+};
+</script>
+</body>
+</html>
